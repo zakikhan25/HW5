@@ -124,7 +124,7 @@ public class CuckooHash<K, V> {
         table = new Bucket[CAPACITY]; 
     }
 
-    public int mapSize() { return CAPACITY; } // used in external testing only
+   ACITY; } // used in external testing only
 
     /**
      * Method values
@@ -166,7 +166,7 @@ public class CuckooHash<K, V> {
      * Adds a key-value pair to the table by means of cuckoo hashing. 
      * Each element can only be inserted into one of two bucket locations,
      * defined by the two separate hash functions, h1(key) or h2(key).
-     * element's initial location will always be defined
+     * Each element's initial location will always be defined
      * by h1(key). If later it is kicked out of that bucket location by 
      * another element insertion, it will move back and forth between those
      * two hash locations (aka, bucket locations).
@@ -174,10 +174,10 @@ public class CuckooHash<K, V> {
      * On its initial invocation, this method places the passed <key,value>
      * element at its h1(key) bucket location. If an element is already located
      * at that bucket location, it will be kicked out and moved to its secondary
-     location in order to make room for this initially inserted element. The
+     * location in order to make room for this initially inserted element. The
      * secondary location is defined by the kicked out key's alternative hash
      * function (aka, either h1(key) or h2(key), whichever is the one that moves
-     * to the alternate location.
+     * to the alternate location).
      *
      * This process will continue in a loop as it moves kicked out 
      * elements to their alternate location (defined by h1(key) and h2(key))
@@ -219,6 +219,3 @@ public class CuckooHash<K, V> {
      * (and edge being defined as with end-points of the two bucket locations for the
      * moved element). This once a cycle is detected in this graph, which is by starting
      * to traverse an existing edge in the graph, we have a cycle. However, we have not
-     * discussed graphs yet, they are at the end of the semester :-)
-     *
-    
