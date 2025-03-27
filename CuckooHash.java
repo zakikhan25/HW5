@@ -3,7 +3,7 @@
  * Zaki Khan / 272 001
  *
  * Note, additional comments provided throughout this source code
- * is for educational purposes
+ * are for educational purposes
  *
  ********************************************************************/
 import java.util.ArrayList;
@@ -67,43 +67,24 @@ public class CuckooHash<K, V> {
             bucKey = k; 
             value = v;
         }
-        /*
-         * Getters and Setters
-         */
-        private K getBucKey() {
+
+        public K getBucKey() {
             return bucKey;
         }
-        private V getValue() { return value; }
+
+        public V getValue() {
+            return value;
+        }
     }
 
-    /*
-     * Hash functions, hash1 and hash2
-     */
     private int hash1(K key) { return Math.abs(key.hashCode()) % CAPACITY; }
     private int hash2(K key) { return (a * b + Math.abs(key.hashCode())) % CAPACITY; }
 
-    /**
-     * Method CuckooHash
-     *
-     * Constructor that initializes and sets the hashmap. A future 
-     * optimization would to pass a load factor limit as a target in
-     * maintaining the hashmap before reaching the point where we have
-     * a cycle causing occurring loop.
-     *
-     * @param size user input multimap capacity
-     */
     public CuckooHash(int size) {
         CAPACITY = size;
         table = new Bucket[CAPACITY];
-    } 
+    }
 
-    /**
-     * Method size
-     *
-     * Get the number of elements in the table; the time complexity is O(n).
-     *
-     * @return total key-value pairs
-     */
     public int size() {
         int count = 0;
         for (int i = 0; i < CAPACITY; ++i) {
@@ -113,28 +94,12 @@ public class CuckooHash<K, V> {
         return count;
     }
 
-    /**
-     * Method clear
-     *
-     * Removes all elements in the table, it does not rest the size of 
-     * the hashmap. Optionally, we could reset the CAPACITY to its
-     * initial value when the object was instantiated.
-     */
     public void clear() {
         table = new Bucket[CAPACITY]; 
     }
 
-   ACITY; } // used in external testing only
-
-    /**
-     * Method values
-     *
-     * Get a list containing of all values in the table
-     *
-     * @return the values as a list
-     */
     public List<V> values() {
-        List<V> allValues = new ArrayList<V>(); 
+        List<V> allValues = new ArrayList<>(); 
         for (int i = 0; i < CAPACITY; ++i) {
             if (table[i] != null) {
                 allValues.add(table[i].getValue());
@@ -143,15 +108,8 @@ public class CuckooHash<K, V> {
         return allValues;
     }
 
-    /**
-     * Method keys
-     *
-     * Get a set containing all the keys in the table
-     *
-     * @return a set of keys
-     */
     public Set<K> keys() {
-        Set<K> allKeys = new HashSet<K>();
+        Set<K> allKeys = new HashSet<>();
         for (int i = 0; i < CAPACITY; ++i) {
             if (table[i] != null) {
                 allKeys.add(table[i].getBucKey());
@@ -160,62 +118,77 @@ public class CuckooHash<K, V> {
         return allKeys;
     }
 
-    /**
-     * Method put
-     *
-     * Adds a key-value pair to the table by means of cuckoo hashing. 
-     * Each element can only be inserted into one of two bucket locations,
-     * defined by the two separate hash functions, h1(key) or h2(key).
-     * Each element's initial location will always be defined
-     * by h1(key). If later it is kicked out of that bucket location by 
-     * another element insertion, it will move back and forth between those
-     * two hash locations (aka, bucket locations).
-     *
-     * On its initial invocation, this method places the passed <key,value>
-     * element at its h1(key) bucket location. If an element is already located
-     * at that bucket location, it will be kicked out and moved to its secondary
-     * location in order to make room for this initially inserted element. The
-     * secondary location is defined by the kicked out key's alternative hash
-     * function (aka, either h1(key) or h2(key), whichever is the one that moves
-     * to the alternate location).
-     *
-     * This process will continue in a loop as it moves kicked out 
-     * elements to their alternate location (defined by h1(key) and h2(key))
-     * until either:
-     * (1) an empty bucket is found, or
-     * (2) we reach 'n' iterations, where 'n' is the bucket capacity
-     * of the hashmap (see HINT below on this method of cycle
-     * detection, the bucket capacity is held in variable 'CAPACITY').
-     *
-     * If we reach 'n' shuffles of elements being kicked out and moved to their
-     * secondary locations (leading to what appears to be a cycle), we will grow
-     * the hashmap and rehash (via method rehash()). After the rehash, we will
-     * need to re-invoke this method recursively, as we will have one element that
-     * was kicked out after the 'n' iteration that still needs to be inserted. Note,
-     * that it is possible when the bucket lists is small, that we may need to rehash
-     * twice to break a cycle. Again, this is done automatically when calling this
-     * method recursively.
-     *
-     * MAKE SURE YOU UNDERSTAND THE HINTS:
-     *
-     * HINT 1: To make sure you pass the provided tests in main, follow this rule:
-     * - Given a <key, value> via method's invocation, the bucket it
-     * determined by hashing the 'key'
-     * - Normally, we would not allow dupe keys, for our purposes here we
-     * WILL allow. What will be unique in this assignment's implementation
-     * is the <key,value> in the table. So when inserting a key that is
-     * already in the table, continue unless a dupe key has the same
-     * value as being inserted.
-     *
-     * The above is being done to make testing easy on causing cycles with minimal
-     * insertions into the hash table.
-     *
-     * HINT 2: For simplicity of this assignment, after shuffling elements between
-     * buckets 'n' times (where 'n' is defined by the value of variable 'CAPACITY',
-     * you can assume you are in an infinite cycle. This may not be true, but if
-     * growing the hash map when not in a cycle, this will not cause data integrity
-     * issues. BUT BE CLEAR IN PRACTICE, as we discussed in class, a better way to
-     * do this is to build a graph (one edge at a time) for each element shuffled
-     * (and edge being defined as with end-points of the two bucket locations for the
-     * moved element). This once a cycle is detected in this graph, which is by starting
-     * to traverse an existing edge in the graph, we have a cycle. However, we have not
+    public void put(K key, V value) {
+        Bucket<K, V> newBucket = new Bucket<>(key, value);
+        int pos1 = hash1(key);
+        int pos2 = hash2(key);
+
+        for (int i = 0; i < CAPACITY; i++) {
+            if (table[pos1] == null) {
+                table[pos1] = newBucket;
+                return;
+            } else if (table[pos1].getBucKey().equals(key) && table[pos1].getValue().equals(value)) {
+                return;
+            } else {
+                Bucket<K, V> temp = table[pos1];
+                table[pos1] = newBucket;
+                newBucket = temp;
+                pos1 = hash2(newBucket.getBucKey());
+            }
+        }
+        rehash();
+        put(key, value);
+    }
+
+    private void rehash() {
+        CAPACITY *= 2;
+        Bucket<K, V>[] oldTable = table;
+        table = new Bucket[CAPACITY];
+
+        for (Bucket<K, V> bucket : oldTable) {
+            if (bucket != null) {
+                put(bucket.getBucKey(), bucket.getValue());
+            }
+        }
+    }
+
+    public V get(K key) {
+        int pos1 = hash1(key);
+        int pos2 = hash2(key);
+
+        if (table[pos1] != null && table[pos1].getBucKey().equals(key)) {
+            return table[pos1].getValue();
+        }
+        if (table[pos2] != null && table[pos2].getBucKey().equals(key)) {
+            return table[pos2].getValue();
+        }
+        return null;
+    }
+
+    public boolean remove(K key, V value) {
+        int pos1 = hash1(key);
+        int pos2 = hash2(key);
+
+        if (table[pos1] != null && table[pos1].getBucKey().equals(key) && table[pos1].getValue().equals(value)) {
+            table[pos1] = null;
+            return true;
+        }
+        if (table[pos2] != null && table[pos2].getBucKey().equals(key) && table[pos2].getValue().equals(value)) {
+            table[pos2] = null;
+            return true;
+        }
+        return false;
+    }
+
+    public String printTable() {
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < CAPACITY; ++i) {
+            if (table[i] != null) {
+                sb.append("[").append(table[i].getBucKey()).append(", ").append(table[i].getValue()).append("] ");
+            } else {
+                sb.append("[null] ");
+            }
+        }
+        return sb.toString();
+    }
+}
