@@ -152,7 +152,7 @@ public class CuckooHash<K, V> {
      */
     public Set<K> keys() {
         Set<K> allKeys = new HashSet<K>();
-        for i = 0; i < CAPACITY; ++i) {
+        for (int i = 0; i < CAPACITY; ++i) {
             if (table[i] != null) {
                 allKeys.add(table[i].getBucKey());
             }
@@ -166,7 +166,7 @@ public class CuckooHash<K, V> {
      * Adds a key-value pair to the table by means of cuckoo hashing. 
      * Each element can only be inserted into one of two bucket locations,
      * defined by the two separate hash functions, h1(key) or h2(key).
-     * Each element's initial location will always be defined
+     * element's initial location will always be defined
      * by h1(key). If later it is kicked out of that bucket location by 
      * another element insertion, it will move back and forth between those
      * two hash locations (aka, bucket locations).
@@ -174,7 +174,7 @@ public class CuckooHash<K, V> {
      * On its initial invocation, this method places the passed <key,value>
      * element at its h1(key) bucket location. If an element is already located
      * at that bucket location, it will be kicked out and moved to its secondary
-     * location in order to make room for this initially inserted element. The
+     location in order to make room for this initially inserted element. The
      * secondary location is defined by the kicked out key's alternative hash
      * function (aka, either h1(key) or h2(key), whichever is the one that moves
      * to the alternate location.
@@ -221,5 +221,4 @@ public class CuckooHash<K, V> {
      * to traverse an existing edge in the graph, we have a cycle. However, we have not
      * discussed graphs yet, they are at the end of the semester :-)
      *
-     * @param key the key of the element to add
-     * @param
+    
