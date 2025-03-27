@@ -2,117 +2,93 @@
  *
  * Zaki Khan / 272 001
  *
- * Note, additional comments provided throughout source code is
- * for educational purposes.
+ * This java file contains the problem solutions of isSubSet, findKthLargest,
+ * and sort2Arrays methods. You should utilize the Java Collection Framework for
+ * these methods.
  *
  ********************************************************************/
-import java.util.BitSet;
-import java.util.Random;
-import java.util.HashSet;
-import java.util.Set;
-import java.security.SecureRandom;
-import java.lang.Math;
+import java.util.*;
 
-/**
- * Bloom Filters
- *
- * A Bloom filter is an implementation of a set which allows a certain 
- * probability of 'false positives' when determining if a given object is 
- * a member of that set, in return for a reduction in the amount of memory 
- * required for the set. It effectively works as follows:
- * 1) We allocate 'm' bits to represent the set data.
- * 2) We provide a hash function, which, instead of a single hash code, 
- produces'k' hash codes and sets those bits.
- * 3) To add an element to the set, we derive bit indexes from all 'k' 
- hash codes and set those bits.
- * 4) To determine if an element is in the set, we again calculate the 
- * corresponding hash codes and bit indexes, and say it is likely 
- * present if and only if all corresponding bits are set.
- *
- * The margin of error (or false positive rate) thus comes from the fact 
- * that as we add more and more objects to the set, we increase the likelihood
- * of "accidentally" setting a combination of bits that corresponds to an 
- * element that isn't actually in the set. However, through tuning the bloom 
- * filter setup based on the expected data, we mathematically have control 
- * over the desired false positive probability rate that we want to received
- * based on probability theory.
- *
- * False Positive rate discussion:
- *
- * The Bloom filter performance changes as we change parameters discussed 
- * below with the class constructors. There are two key variables that impact 
- * the false positive rate:
- * 1) number of bits per item
- * 2) number of hash codes
- *
- * In other words, how many more bits are there in the filter than the 
- * maximum number of items we want to represent in the set, and hence the 
- * number of bits that we actually set for each element that we add to the 
- * set. The more bits we require to be marked as set to '1' in order to mark 
- * an element as 'present' - e.g., the more hash code per item - the lower the 
- * chance of false positives, because for a given element potentially in
- * the set, there's less chance of some random combination of bits from other 
- * elements also accidentally marking that element as present when it isn't.
- *
- * But, for a given bit filter size, there is a 'point of no return', at 
- * which having more hash codes simply means that we fill up the bit set too 
- * quickly as we add elements -- and hence get more false positives -- than 
- * with fewer hash codes.
- *
- * Based on this discussion, you can find many Bloom Filter calculators 
- * available online to determine how to adjust the variables inorder to 
- * achieve the desired probability of false positive rates that you can 
- * tolerate and/or desire for your application, e.g.,:
- * - https://toolslick.com/programming/data-structure/bloom-filter-calculator
- * - https://www.engineersedge.com/calculators/bloom_filter_calculator_15596.htm
- * - https://www.di-mgt.com.au/bloom-calculator.html
- * - https://programming.guide/bloom-filter-calculator.html
- */
-class BloomFilter {
-    private static final int MAX_HASHES = 8;
-    private static final long[] byteTable;
-    private static final long HSTART = 0xBB40E64DA205B064L;
-    private static final long HMULT = 7664345821815920749L;
-
-    static {
-        byteTable = new long[256 * MAX_HASHES];
-        long h = 0x544B2FBACAAF1684L;
-        for (int i = 0; i < byteTable.length; i++) {
-            for (int j = 0; j < 31; j++)
-                h = (h >>> 7) ^ h; h = (h << 11) ^ h; h = (h >>> 10) ^ h;
-            byteTable[i] = h;
+class ProblemSolutions {
+    /**
+     * Method: isSubset()
+     *
+     * Given two arrays of integers, A and B, return whether
+     * array B is a subset if array A. Example:
+     * Input: [1,50,55,80,90], [55,90]
+     * Output: true
+     * Input: [1,50,55,80,90], [55,90, 99]
+     * Output: false
+     *
+     * The solution time complexity must NOT be worse than O(n).
+     * For the solution, use a Hash Table.
+     *
+     * @param list1 - Input array A
+     * @param list2 - input array B
+     * @return - returns boolean value B is a subset of A.
+     */
+    public boolean isSubset(int list1[], int list2[]) {
+        HashMap<Integer, Integer> map = new HashMap<>();
+        for (int num : list1) {
+            map.put(num, map.getOrDefault(num, 0) + 1);
         }
+        for (int num : list2) {
+            if (!map.containsKey(num) || map.get(num) == 0) {
+                return false;
+            }
+            map.put(num, map.get(num) - 1);
+        }
+        return true;
     }
 
-    private long hashCode(String s, int hcNo) {
-        long h = HSTART;
-        final long hmult = HMULT;
-        final long[] ht = byteTable;
-        int startIx = 256 * hcNo;
-        for (int len = s.length(), i = 0; i < len; i++) {
-            char ch = s.charAt(i);
-            h = (h * hmult) ^ ht[startIx + (ch & 0xff)];
-            h = (h * hmult) ^ ht[startIx + ((ch >>> 8) & 0xff)];
+    /**
+     * Method: findKthLargest
+     *
+     * Given an Array A and integer K, return the k-th maximum element in the array.
+     * Example:
+     * Input: [1,7,3,10,34,5,8], 4
+     * Output: 7
+     *
+     * @param array - Array of integers
+     * @param k - the kth maximum element
+     * @return - the value in the array which is the kth maximum value
+     */
+    public int findKthLargest(int[] array, int k) {
+        PriorityQueue<Integer> pq = new PriorityQueue<>();
+        for (int num : array) {
+            pq.offer(num);
+            if (pq.size() > k) {
+                pq.poll();
+            }
         }
-        return h;
+        return pq.peek();
     }
 
-    private final BitSet data; // The hash bit map
-    private final int noHashes; // number of hashes
-    private final int hashMask; // hash mask
-
-    public BloomFilter(int log2noBits, int noHashes) {
-        if (log2noBits < 1 || log2noBits > 31)
-            throw new IllegalArgumentException("Invalid number of bits");
-        if (noHashes < 1 || noHashes > MAX_HASHES)
-            throw new IllegalArgumentException("Invalid number of hashes");
-        this.data = new BitSet(1 << log2noBits);
-        this.noHashes = noHashes;
-        this.hashMask = (1 << log2noBits) - 1;
-    }
-
-    public BloomFilter(int noItems, int bitsPerItem, int noHashes) {
-        int bitsRequired = noItems * bitsPerItem;
-        if (bitsRequired >= Integer.MAX_VALUE) {
-            throw new IllegalArgumentException("Bloom filter would be too big");
+    /**
+     * Method: sort2Arrays
+     *
+     * Given two arrays A and B with n and m integers respectively, return
+     * a single array of all the elements in A and B in sorted order. Example:
+     * Input: [4,1,5], [3,2]
+     * Output: 1 2 3 4 5
+     *
+     * @param array1 - Input array 1
+     * @param array2 - Input array 2
+     * @return - Sorted array with all elements in A and B.
+     */
+    public int[] sort2Arrays(int[] array1, int[] array2) {
+        PriorityQueue<Integer> pq = new PriorityQueue<>();
+        for (int num : array1) {
+            pq.offer(num);
         }
+        for (int num : array2) {
+            pq.offer(num);
+        }
+        int[] sortedArray = new int[array1.length + array2.length];
+        int index = 0;
+        while (!pq.isEmpty()) {
+            sortedArray[index++] = pq.poll();
+        }
+        return sortedArray;
+    }
+}
