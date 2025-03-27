@@ -15,7 +15,8 @@ public class CuckooHash<K, V> {
     private int CAPACITY;
     private Bucket<K, V>[] table;
     private int a = 37, b = 17;
-    private LinkedHashMap<K, V> insertionOrderMap = new LinkedHashMap<>();
+    private int size = 0;
+    private List<Map.Entry<K, V>> insertionOrder = new ArrayList<>();
 
     private class Bucket<K, V> {
         private K bucKey = null;
@@ -39,28 +40,39 @@ public class CuckooHash<K, V> {
     }
 
     public int size() {
-        return insertionOrderMap.size();
+        return size;
     }
 
     public void clear() {
         table = new Bucket[CAPACITY];
-        insertionOrderMap.clear();
+        insertionOrder.clear();
+        size = 0;
     }
 
     public int mapSize() { return CAPACITY; }
 
     public List<V> values() {
-        return new ArrayList<>(insertionOrderMap.values());
+        List<V> values = new ArrayList<>();
+        for (Map.Entry<K, V> entry : insertionOrder) {
+            values.add(entry.getValue());
+        }
+        return values;
     }
 
     public Set<K> keys() {
-        return insertionOrderMap.keySet();
+        Set<K> keys = new HashSet<>();
+        for (Map.Entry<K, V> entry : insertionOrder) {
+            keys.add(entry.getKey());
+        }
+        return keys;
     }
 
     public void put(K key, V value) {
         // Check if this exact key-value pair already exists
-        if (insertionOrderMap.containsKey(key) && insertionOrderMap.get(key).equals(value)) {
-            return;
+        for (Map.Entry<K, V> entry : insertionOrder) {
+            if (entry.getKey().equals(key) && entry.getValue().equals(value)) {
+                return;
+            }
         }
 
         Bucket<K, V> newBucket = new Bucket<>(key, value);
@@ -70,14 +82,16 @@ public class CuckooHash<K, V> {
         // Try to place in first position
         if (table[pos1] == null) {
             table[pos1] = newBucket;
-            insertionOrderMap.put(key, value);
+            insertionOrder.add(new AbstractMap.SimpleEntry<>(key, value));
+            size++;
             return;
         }
 
         // Try to place in second position
         if (table[pos2] == null) {
             table[pos2] = newBucket;
-            insertionOrderMap.put(key, value);
+            insertionOrder.add(new AbstractMap.SimpleEntry<>(key, value));
+            size++;
             return;
         }
 
@@ -89,7 +103,8 @@ public class CuckooHash<K, V> {
         while (iterations <= CAPACITY) {
             if (table[currentPos] == null) {
                 table[currentPos] = current;
-                insertionOrderMap.put(current.getBucKey(), current.getValue());
+                insertionOrder.add(new AbstractMap.SimpleEntry<>(current.getBucKey(), current.getValue()));
+                size++;
                 return;
             }
 
@@ -112,34 +127,48 @@ public class CuckooHash<K, V> {
     }
 
     public V get(K key) {
-        return insertionOrderMap.get(key);
+        int pos1 = hash1(key);
+        int pos2 = hash2(key);
+        if (table[pos1] != null && table[pos1].getBucKey().equals(key))
+            return table[pos1].getValue();
+        else if (table[pos2] != null && table[pos2].getBucKey().equals(key))
+            return table[pos2].getValue();
+        return null;
     }
 
     public boolean remove(K key, V value) {
-        if (!insertionOrderMap.containsKey(key) || !insertionOrderMap.get(key).equals(value)) {
-            return false;
-        }
-        
         int pos1 = hash1(key);
         int pos2 = hash2(key);
         
         if (table[pos1] != null && table[pos1].getBucKey().equals(key) && table[pos1].getValue().equals(value)) {
             table[pos1] = null;
-            insertionOrderMap.remove(key);
+            removeFromInsertionOrder(key, value);
+            size--;
             return true;
         }
         else if (table[pos2] != null && table[pos2].getBucKey().equals(key) && table[pos2].getValue().equals(value)) {
             table[pos2] = null;
-            insertionOrderMap.remove(key);
+            removeFromInsertionOrder(key, value);
+            size--;
             return true;
         }
         return false;
     }
 
+    private void removeFromInsertionOrder(K key, V value) {
+        for (Iterator<Map.Entry<K, V>> it = insertionOrder.iterator(); it.hasNext();) {
+            Map.Entry<K, V> entry = it.next();
+            if (entry.getKey().equals(key) && entry.getValue().equals(value)) {
+                it.remove();
+                break;
+            }
+        }
+    }
+
     public String printTable() {
         StringBuilder sb = new StringBuilder();
         sb.append("[ ");
-        for (Map.Entry<K, V> entry : insertionOrderMap.entrySet()) {
+        for (Map.Entry<K, V> entry : insertionOrder) {
             sb.append("<");
             sb.append(entry.getKey());
             sb.append(", ");
@@ -151,12 +180,13 @@ public class CuckooHash<K, V> {
     }
 
     private void rehash() {
-        Map<K, V> oldEntries = new LinkedHashMap<>(insertionOrderMap);
+        List<Map.Entry<K, V>> oldEntries = new ArrayList<>(insertionOrder);
         CAPACITY = (CAPACITY * 2) + 1;
         table = new Bucket[CAPACITY];
-        insertionOrderMap.clear();
+        insertionOrder.clear();
+        size = 0;
         
-        for (Map.Entry<K, V> entry : oldEntries.entrySet()) {
+        for (Map.Entry<K, V> entry : oldEntries) {
             put(entry.getKey(), entry.getValue());
         }
     }
