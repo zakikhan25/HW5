@@ -2,113 +2,188 @@
  *
  *   Zaki Khan / 272 001
  *
- *   Cuckoo Hashing implementation with automatic rehashing
+ *   Note, additional comments provided throughout this source code
+ *   is for educational purposes
  *
  ********************************************************************/
 
 import java.util.*;
+import java.lang.Math;
 
-public class CuckooHash<K,V> {
-    private static final int MAX_ITERATIONS = 10;
-    private Entry<K,V>[] table1, table2;
-    private int size;
-    private List<Entry<K,V>> insertionOrder;
+@SuppressWarnings("unchecked")
+public class CuckooHash<K, V> {
+    private int CAPACITY;
+    private Bucket<K, V>[] table;
+    private int a = 37, b = 17;
+    private int insertionCounter = 0;
 
-    private static class Entry<K,V> {
-        final K key;
-        final V value;
-        Entry(K k, V v) { key = k; value = v; }
-    }
-
-    public CuckooHash(int capacity) {
-        table1 = new Entry[capacity];
-        table2 = new Entry[capacity];
-        insertionOrder = new ArrayList<>();
-    }
-
-    public void put(K key, V value) {
-        if (key == null) return;
+    private class Bucket<K, V> {
+        private K bucKey = null;
+        private V value = null;
+        private int insertionOrder;
         
-        Entry<K,V> newEntry = new Entry<>(key, value);
-        
-        // Check if already exists
-        for (Entry<K,V> e : insertionOrder)
-            if (e.key.equals(key) && e.value.equals(value))
-                return;
-
-        for (int i = 0; i < MAX_ITERATIONS; i++) {
-            // Try table1 first
-            int h1 = hash1(key);
-            if (table1[h1] == null) {
-                table1[h1] = newEntry;
-                insertionOrder.add(newEntry);
-                size++;
-                return;
-            }
-            
-            // Evict and try table2
-            Entry<K,V> evicted = table1[h1];
-            table1[h1] = newEntry;
-            
-            int h2 = hash2(evicted.key);
-            if (table2[h2] == null) {
-                table2[h2] = evicted;
-                insertionOrder.add(newEntry);
-                size++;
-                return;
-            }
-            
-            // Both tables full, continue cuckoo process
-            newEntry = table2[h2];
-            table2[h2] = evicted;
+        public Bucket(K k, V v, int order) {
+            bucKey = k; 
+            value = v;
+            insertionOrder = order;
         }
-        
-        // Rehash if we get here
-        rehash();
-        put(key, value);
+
+        private K getBucKey() { return bucKey; }
+        private V getValue() { return value; }
+        private int getInsertionOrder() { return insertionOrder; }
     }
 
-    private void rehash() {
-        List<Entry<K,V>> entries = new ArrayList<>(insertionOrder);
-        int newSize = table1.length * 2 + 1;
-        
-        table1 = new Entry[newSize];
-        table2 = new Entry[newSize];
-        insertionOrder.clear();
-        size = 0;
-        
-        for (Entry<K,V> e : entries)
-            put(e.key, e.value);
+    private int hash1(K key) { return Math.abs(key.hashCode()) % CAPACITY; }
+    private int hash2(K key) { return (a * b + Math.abs(key.hashCode())) % CAPACITY; }
+
+    public CuckooHash(int size) {
+        CAPACITY = size;
+        table = new Bucket[CAPACITY];
     }
 
-    public V get(K key) {
-        if (key == null) return null;
-        
-        int h1 = hash1(key);
-        if (table1[h1] != null && table1[h1].key.equals(key))
-            return table1[h1].value;
-            
-        int h2 = hash2(key);
-        if (table2[h2] != null && table2[h2].key.equals(key))
-            return table2[h2].value;
-            
-        return null;
+    public int size() {
+        int count = 0;
+        for (int i = 0; i < CAPACITY; ++i) {
+            if (table[i] != null)
+                count++;     
+        }
+        return count;
     }
 
-    private int hash1(K key) {
-        return Math.abs(key.hashCode()) % table1.length;
+    public void clear() {
+        table = new Bucket[CAPACITY]; 
+        insertionCounter = 0;
     }
 
-    private int hash2(K key) {
-        return (Math.abs(key.hashCode()) * 31) % table2.length;
-    }
+    public int mapSize() { return CAPACITY; }
 
     public List<V> values() {
+        List<Bucket<K, V>> buckets = new ArrayList<>();
+        for (int i = 0; i < CAPACITY; ++i) {
+            if (table[i] != null) {
+                buckets.add(table[i]);
+            }
+        }
+        buckets.sort(Comparator.comparingInt(Bucket::getInsertionOrder));
         List<V> values = new ArrayList<>();
-        for (Entry<K,V> e : insertionOrder)
-            values.add(e.value);
+        for (Bucket<K, V> bucket : buckets) {
+            values.add(bucket.getValue());
+        }
         return values;
     }
 
-    // Other required methods (size, clear, etc.) would go here
+    public Set<K> keys() {
+        Set<K> allKeys = new HashSet<K>();
+        for (int i = 0; i < CAPACITY; ++i) {
+            if (table[i] != null) {
+                allKeys.add(table[i].getBucKey());
+            }
+        }
+        return allKeys;
+    }
+
+    public void put(K key, V value) {
+        // Check if this exact key-value pair already exists
+        if (get(key) != null && get(key).equals(value)) {
+            return;
+        }
+
+        Bucket<K, V> newBucket = new Bucket<>(key, value, insertionCounter++);
+        int pos1 = hash1(key);
+        int pos2 = hash2(key);
+
+        // Try to place in first position
+        if (table[pos1] == null) {
+            table[pos1] = newBucket;
+            return;
+        }
+
+        // Try to place in second position
+        if (table[pos2] == null) {
+            table[pos2] = newBucket;
+            return;
+        }
+
+        // Need to evict someone - start with first position
+        Bucket<K, V> current = newBucket;
+        int currentPos = pos1;
+        int iterations = 0;
+
+        while (iterations <= CAPACITY) {
+            if (table[currentPos] == null) {
+                table[currentPos] = current;
+                return;
+            }
+
+            // Swap current with existing
+            Bucket<K, V> temp = table[currentPos];
+            table[currentPos] = current;
+            current = temp;
+
+            // Move to alternate position
+            currentPos = (currentPos == hash1(current.getBucKey())) 
+                ? hash2(current.getBucKey()) 
+                : hash1(current.getBucKey());
+
+            iterations++;
+        }
+
+        // If we get here, we have a cycle - rehash
+        rehash();
+        put(current.getBucKey(), current.getValue());
+    }
+
+    public V get(K key) {
+        int pos1 = hash1(key);
+        int pos2 = hash2(key);
+        if (table[pos1] != null && table[pos1].getBucKey().equals(key))
+            return table[pos1].getValue();
+        else if (table[pos2] != null && table[pos2].getBucKey().equals(key))
+            return table[pos2].getValue();
+        return null;
+    }
+
+    public boolean remove(K key, V value) {
+        int pos1 = hash1(key);
+        int pos2 = hash2(key);
+        if (table[pos1] != null && table[pos1].getValue().equals(value)) {
+            table[pos1] = null;
+            return true;
+        }
+        else if (table[pos2] != null && table[pos2].getValue().equals(value)) {
+            table[pos2] = null;
+            return true;
+        }
+        return false;
+    }
+
+    public String printTable() {
+        StringBuilder sb = new StringBuilder();
+        sb.append("[ ");
+        for (int i = 0; i < CAPACITY; ++i) {
+            if (table[i] != null) {
+                sb.append("<");
+                sb.append(table[i].getBucKey());
+                sb.append(", ");
+                sb.append(table[i].getValue());
+                sb.append("> ");
+            }
+        }
+        sb.append("]");
+        return sb.toString();
+    }
+
+    private void rehash() {
+        Bucket<K, V>[] oldTable = table;
+        int oldCapacity = CAPACITY;
+        CAPACITY = (CAPACITY * 2) + 1;
+        table = new Bucket[CAPACITY];
+        insertionCounter = 0;
+
+        for (int i = 0; i < oldCapacity; i++) {
+            if (oldTable[i] != null) {
+                put(oldTable[i].getBucKey(), oldTable[i].getValue());
+            }
+        }
+    }
 }
